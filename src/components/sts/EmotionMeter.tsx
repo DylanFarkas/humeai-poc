@@ -13,7 +13,7 @@ interface UserState {
   timestamp: number;
 }
 
-export default function EmotionMeter() {
+export default function EmotionMeter({ variant = 'default' }: { variant?: 'default' | 'prominent' }) {
   const { messages, readyState } = useVoice();
   const [userState, setUserState] = useState<UserState>({
     emotions: {},
@@ -157,8 +157,10 @@ export default function EmotionMeter() {
   const isSessionClosed = readyState === VoiceReadyState.CLOSED;
 
   return (
-    <div className="h-full flex flex-col">
-      <h3 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent mb-4 transition-all duration-300">
+    <div className={`h-full flex flex-col ${variant === 'prominent' ? 'lg:p-1' : ''}`}>
+      <h3 className={`${variant === 'prominent' 
+          ? 'text-2xl md:text-3xl' 
+          : 'text-xl'} font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent mb-4 transition-all duration-300`}>
         Expression Measurement
       </h3>
       
@@ -182,7 +184,7 @@ export default function EmotionMeter() {
             </div>
             
             {/* Lista de emociones */}
-            <div className="space-y-3">
+            <div className={`${variant === 'prominent' ? 'space-y-4' : 'space-y-3'}`}>
               {topEmotions.map(([emotion, score]) => (
                 <div key={emotion} className="space-y-2">
                   <div className="flex justify-between text-sm">
@@ -193,9 +195,9 @@ export default function EmotionMeter() {
                       {score.toFixed(2)}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 transition-colors duration-300">
+                  <div className={`w-full bg-gray-200 dark:bg-gray-700 rounded-full ${variant === 'prominent' ? 'h-3' : 'h-2'} transition-colors duration-300`}>
                     <div
-                      className={`h-2 rounded-full ${getEmotionColor(emotion)} transition-all duration-500 ease-out`}
+                      className={`${variant === 'prominent' ? 'h-3' : 'h-2'} rounded-full ${getEmotionColor(emotion)} transition-all duration-500 ease-out`}
                       style={{ width: `${score * 100}%` }}
                     />
                   </div>
@@ -204,7 +206,7 @@ export default function EmotionMeter() {
             </div>
             
             {/* Indicador visual adicional */}
-            <div className="mt-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 transition-all duration-300">
+            <div className={`${variant === 'prominent' ? 'mt-8 p-5' : 'mt-6 p-4'} bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 transition-all duration-300`}>
               <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 transition-colors duration-300">
                 Emotional State
               </div>
