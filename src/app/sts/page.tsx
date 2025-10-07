@@ -4,7 +4,7 @@ import ChatClient from "@/app/sts/ChatClient";
 
 export default async function Page() {
   const accessToken = await fetchAccessToken({
-    apiKey: String(process.env.HUME_API_KEY),
+    apiKey: String(process.env.NEXT_PUBLIC_HUME_API_KEY),
     secretKey: String(process.env.HUME_SECRET_KEY),
   });
 
