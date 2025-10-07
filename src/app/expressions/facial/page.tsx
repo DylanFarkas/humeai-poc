@@ -22,8 +22,10 @@ export default function ExpressionsPage() {
   const [topEmotions, setTopEmotions] = useState<Emotion[]>([]);
   const [allEmotions, setAllEmotions] = useState<Emotion[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [faceBbox, setFaceBbox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const humeClientRef = useRef<HumeWebSocketClient | null>(null);
   const frameIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_HUME_API_KEY;
@@ -50,8 +52,14 @@ export default function ExpressionsPage() {
   }, []);
 
   const handleHumeResponse = (data: HumeResponse) => {
+    //console.log('Hume Response:', data); // Debug
     if (data.face && data.face.predictions && data.face.predictions.length > 0) {
-      const emotions = data.face.predictions[0].emotions;
+      const prediction = data.face.predictions[0];
+      const emotions = prediction.emotions;
+
+      // Guardar el bounding box
+      //console.log('Bounding Box:', prediction.bbox); // Debug
+      setFaceBbox(prediction.bbox);
 
       // Ordenar emociones por score
       const sortedEmotions = [...emotions].sort((a, b) => b.score - a.score);
@@ -63,6 +71,10 @@ export default function ExpressionsPage() {
       setAllEmotions(sortedEmotions);
 
       setIsProcessing(false);
+    } else {
+      //console.log('No face detected'); // Debug
+      // No se detectó cara
+      setFaceBbox(null);
     }
   };
 
@@ -79,7 +91,7 @@ export default function ExpressionsPage() {
       setIsConnected(true);
       await startWebcam();
 
-      // Enviar frames cada 500ms
+      // Enviar frames cada 1000ms
       frameIntervalRef.current = setInterval(() => {
         if (humeClientRef.current?.isConnected()) {
           const frame = captureFrame();
@@ -108,7 +120,113 @@ export default function ExpressionsPage() {
     setIsConnected(false);
     setTopEmotions([]);
     setAllEmotions([]);
+    setFaceBbox(null);
   };
+
+  // Dibujar el bounding box en el canvas overlay
+  useEffect(() => {
+    if (!overlayCanvasRef.current || !videoRef.current) return;
+
+    const canvas = overlayCanvasRef.current;
+    const video = videoRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationFrameId: number;
+
+    const drawBoundingBox = () => {
+      // Ajustar el tamaño del canvas al contenedor
+      const rect = video.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+
+      // Limpiar el canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (faceBbox && video.videoWidth > 0 && video.videoHeight > 0) {
+        // Las coordenadas vienen en píxeles del video original
+        // Necesitamos escalarlas al tamaño del display
+        const scaleX = canvas.width / video.videoWidth;
+        const scaleY = canvas.height / video.videoHeight;
+
+        // Calcular coordenadas escaladas
+        const x = faceBbox.x * scaleX;
+        const y = faceBbox.y * scaleY;
+        const w = faceBbox.w * scaleX;
+        const h = faceBbox.h * scaleY;
+
+        //console.log('Drawing bbox:', { x, y, w, h, canvasWidth: canvas.width, canvasHeight: canvas.height }); // Debug
+
+        // Dibujar el rectángulo principal
+        ctx.strokeStyle = '#a855f7'; // Purple-500
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, w, h);
+
+        // Dibujar las esquinas decorativas
+        const cornerLength = 25;
+        ctx.strokeStyle = '#c084fc'; // Purple-400
+        ctx.lineWidth = 4;
+
+        // Top-left corner
+        ctx.beginPath();
+        ctx.moveTo(x, y + cornerLength);
+        ctx.lineTo(x, y);
+        ctx.lineTo(x + cornerLength, y);
+        ctx.stroke();
+
+        // Top-right corner
+        ctx.beginPath();
+        ctx.moveTo(x + w - cornerLength, y);
+        ctx.lineTo(x + w, y);
+        ctx.lineTo(x + w, y + cornerLength);
+        ctx.stroke();
+
+        // Bottom-left corner
+        ctx.beginPath();
+        ctx.moveTo(x, y + h - cornerLength);
+        ctx.lineTo(x, y + h);
+        ctx.lineTo(x + cornerLength, y + h);
+        ctx.stroke();
+
+        // Bottom-right corner
+        ctx.beginPath();
+        ctx.moveTo(x + w - cornerLength, y + h);
+        ctx.lineTo(x + w, y + h);
+        ctx.lineTo(x + w, y + h - cornerLength);
+        ctx.stroke();
+
+        // Agregar etiqueta "Face Detected"
+        const labelY = y > 35 ? y - 10 : y + h + 20;
+        ctx.fillStyle = 'rgba(168, 85, 247, 0.9)';
+        ctx.fillRect(x, labelY - 20, 120, 25);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText('Face Detected', x + 8, labelY);
+      }
+
+      if (isStreaming) {
+        animationFrameId = requestAnimationFrame(drawBoundingBox);
+      }
+    };
+
+    if (isStreaming) {
+      // Esperar a que el video esté listo
+      const checkVideoReady = () => {
+        if (video.readyState >= 2) {
+          drawBoundingBox();
+        } else {
+          setTimeout(checkVideoReady, 100);
+        }
+      };
+      checkVideoReady();
+    }
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [faceBbox, isStreaming]);
 
   return (
     <main className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors duration-300">
@@ -145,14 +263,15 @@ export default function ExpressionsPage() {
                     {isConnected ? 'Conectado' : 'Desconectado'}
                   </span>
                 </div>
-                {isProcessing && (<div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                  <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
-                  Procesando...
-                </div>
+                {isProcessing && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
+                    Procesando...
+                  </div>
                 )}
               </div>
 
-              {/* Video Container */}
+              {/* Video Container with Overlay */}
               <div className="relative bg-gray-900 rounded-2xl overflow-hidden border-none" style={{ aspectRatio: '16/9' }}>
                 <video
                   ref={videoRef}
@@ -160,6 +279,12 @@ export default function ExpressionsPage() {
                   playsInline
                   muted
                   className="w-full h-full object-cover"
+                />
+                {/* Canvas overlay para el bounding box */}
+                <canvas
+                  ref={overlayCanvasRef}
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  style={{ objectFit: 'cover' }}
                 />
                 <canvas ref={canvasRef} className="hidden" />
 
@@ -303,7 +428,6 @@ export default function ExpressionsPage() {
                     </div>
                     <p className="text-sm text-center">Los niveles de expresión aparecerán aquí</p>
                   </div>
-
                 )}
               </div>
             </div>

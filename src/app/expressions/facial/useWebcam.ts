@@ -1,3 +1,5 @@
+'use client';
+
 // src/app/expressions/useWebcam.ts
 import { useRef, useEffect, useState } from 'react';
 

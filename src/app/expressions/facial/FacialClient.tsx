@@ -1,3 +1,5 @@
+'use client';
+
 // src/app/expressions/HumeClient.ts
 
 export interface Emotion {
