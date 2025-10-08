@@ -9,8 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@humeai/voice": "^0.1.10",
     "@humeai/voice-react": "^0.2.5",
     "hume": "^0.14.1",
+    "lucide-react": "^0.544.0",
     "next": "15.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0"
