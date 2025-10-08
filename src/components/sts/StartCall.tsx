@@ -1,131 +1,174 @@
+// components/sts/startCall.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useVoice, VoiceReadyState } from "@humeai/voice-react";
+import { VoiceDesignClient, CustomVoice, EviConfig } from "@/app/voice-design/VoiceDesignClient";
 
 type DeviceInfo = { deviceId: string; label: string };
 
 export default function StartCall({ accessToken }: { accessToken: string }) {
   const { connect, disconnect, readyState } = useVoice();
-  const [devices, setDevices] = useState<DeviceInfo[]>([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(undefined);
-  const [connecting, setConnecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Lista de micrófonos disponibles (requiere permiso para ver label)
+  // Mic
+  const [devices, setDevices] = useState<DeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>();
+
+  // Configs
+  const [configs, setConfigs] = useState<EviConfig[]>([]);
+  const [selectedConfigId, setSelectedConfigId] = useState<string>(""); // "" = ninguna
+  const [loadingConfigs, setLoadingConfigs] = useState(false);
+
+  // Voices
+  const [voices, setVoices] = useState<CustomVoice[]>([]);
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string>(""); // "" = ninguna
+  const [loadingVoices, setLoadingVoices] = useState(false);
+
+  // Cargar mics
   useEffect(() => {
-    async function loadDevices() {
+    (async () => {
       try {
-        // Pedimos permiso de micrófono para obtener labels
         await navigator.mediaDevices.getUserMedia({ audio: true });
         const all = await navigator.mediaDevices.enumerateDevices();
-        const mics = all
-          .filter(d => d.kind === "audioinput")
-          .map(d => ({ deviceId: d.deviceId, label: d.label || "Microphone" }));
+        const mics = all.filter(d => d.kind === "audioinput").map(d => ({
+          deviceId: d.deviceId, label: d.label || "Microphone"
+        }));
         setDevices(mics);
-        // Selección por defecto
         if (!selectedDeviceId && mics[0]) setSelectedDeviceId(mics[0].deviceId);
-      } catch (e) {
-        // Si el usuario niega permiso, igual mostramos un mensaje
-        setError("No se pudo acceder al micrófono. Revisa permisos del navegador.");
-      }
-    }
-    loadDevices();
+      } catch { /* ignore */ }
+    })();
   }, [selectedDeviceId]);
 
-  const isOpen = readyState === VoiceReadyState.OPEN;
-  const isConnecting = readyState === VoiceReadyState.CONNECTING || connecting;
+  // Cargar configs + voces
+  useEffect(() => {
+    const apiKey = process.env.NEXT_PUBLIC_HUME_API_KEY;
+    if (!apiKey) return;
+    const client = new VoiceDesignClient(apiKey);
 
-  const statusLabel = useMemo(() => {
-    switch (readyState) {
-      case VoiceReadyState.CONNECTING: return "Conectando…";
-      case VoiceReadyState.OPEN:       return "Conectado";
-      case VoiceReadyState.CLOSED:     return "Desconectado";
-      default:                         return "Desconocido";
-    }
-  }, [readyState]);
+    (async () => {
+      try {
+        setLoadingConfigs(true);
+        const cfgs = await client.listEviConfigs();
+        setConfigs(cfgs);
+      } catch (e) {
+        console.error("No se pudieron cargar las configs:", e);
+      } finally {
+        setLoadingConfigs(false);
+      }
+    })();
+
+    (async () => {
+      try {
+        setLoadingVoices(true);
+        const custom = await client.listVoices("CUSTOM_VOICE");
+        setVoices(custom);
+      } catch (e) {
+        console.error("No se pudieron cargar las voces:", e);
+      } finally {
+        setLoadingVoices(false);
+      }
+    })();
+  }, []);
+
+  const isOpen = readyState === VoiceReadyState.OPEN;
+  const isConnecting = readyState === VoiceReadyState.CONNECTING;
+  const bothSelected = Boolean(selectedConfigId) && Boolean(selectedVoiceId);
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Status Indicator */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium transition-colors duration-300 ${
-          isOpen 
-            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-            : isConnecting 
-            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-            : 'bg-gray-500/10 text-gray-400 border-gray-500/20'
-        }`}>
-          <span className={`inline-flex h-2 w-2 rounded-full ${
-            isOpen ? "bg-emerald-400" : isConnecting ? "bg-amber-400" : "bg-gray-400"
-          }`} />
-          {statusLabel}
-        </div>
-        {error && (
-          <span className="text-sm text-red-400 bg-red-500/10 px-3 py-1.5 rounded-full border border-red-500/20">
-            {error}
-          </span>
-        )}
-      </div>
+      <label className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+        <span className="flex-shrink-0">Configuración EVI:</span>
+        <select
+          className="flex-1 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={selectedConfigId}
+          onChange={(e) => {
+            const val = e.target.value;
+            setSelectedConfigId(val);
+            if (val) {
+              // Si se elige config, limpiar voz y deshabilitarla
+              setSelectedVoiceId("");
+            }
+          }}
+          disabled={loadingConfigs || Boolean(selectedVoiceId)} // bloquea si hay voz elegida
+        >
+          <option value="">Ninguna (usar defaults)</option>
+          {configs.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+      </label>
 
-      {/* Controls */}
-      <div className="flex flex-col gap-3">
-        {/* Microphone Selector */}
-        <label className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600 dark:text-gray-400 transition-colors duration-300">
-          <span className="flex-shrink-0">Micrófono:</span>
-          <select
-            className="flex-1 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300"
-            value={selectedDeviceId}
-            onChange={(e) => setSelectedDeviceId(e.target.value)}
+      <label className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+        <span className="flex-shrink-0">Voz de EVI:</span>
+        <select
+          className="flex-1 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={selectedVoiceId}
+          onChange={(e) => {
+            const val = e.target.value;
+            setSelectedVoiceId(val);
+            if (val) {
+              // Si se elige voz, limpiar config y deshabilitarla
+              setSelectedConfigId("");
+            }
+          }}
+          disabled={loadingVoices || Boolean(selectedConfigId)} // bloquea si hay config elegida
+        >
+          <option value="">Ninguna (la de la config)</option>
+          {voices.map(v => (
+            <option key={v.id} value={v.id}>{v.name}</option>
+          ))}
+        </select>
+      </label>
+
+
+      {/* Selector Mic */}
+      <label className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+        <span className="flex-shrink-0">Micrófono:</span>
+        <select
+          className="flex-1 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          value={selectedDeviceId}
+          onChange={(e) => setSelectedDeviceId(e.target.value)}
+        >
+          {devices.map(d => (
+            <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
+          ))}
+        </select>
+      </label>
+
+      <div className="flex justify-center sm:justify-start">
+
+        {!isOpen ? (
+          <button
+            disabled={isConnecting || !accessToken || bothSelected}
+            onClick={async () => {
+              if (bothSelected) {
+                alert("Elige Config o Voz, no ambas.");
+                return;
+              }
+              try {
+                await connect({
+                  auth: { type: "accessToken", value: accessToken },
+                  ...(selectedConfigId ? { configId: selectedConfigId } : {}),
+                  ...(selectedVoiceId ? { voiceId: selectedVoiceId } : {}),
+                  ...(selectedDeviceId ? { captureDeviceId: selectedDeviceId } : {})
+                });
+              } catch (e) {
+                console.error(e);
+                alert("No se pudo iniciar la sesión de voz.");
+              }
+            }}
+            className="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 px-6 py-2.5 text-sm font-medium text-white"
           >
-            {devices.map(d => (
-              <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
-            ))}
-          </select>
-        </label>
-
-        {/* Action Buttons */}
-        <div className="flex justify-center sm:justify-start">
-          {!isOpen ? (
-            <button
-              disabled={isConnecting || !accessToken}
-              onClick={async () => {
-                setError(null);
-                setConnecting(true);
-                try {
-                  await connect({
-                    auth: { type: "accessToken", value: accessToken },
-                    // captureDeviceId: selectedDeviceId,
-                  });
-                } catch (e) {
-                  setError("No se pudo iniciar la sesión de voz.");
-                } finally {
-                  setConnecting(false);
-                }
-              }}
-              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-50 px-6 py-2.5 text-sm font-medium text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/20 disabled:hover:scale-100 disabled:hover:shadow-none min-w-[140px]"
-            >
-              {isConnecting ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Iniciando…
-                </>
-              ) : (
-                "Start Session"
-              )}
-            </button>
-          ) : (
-            <button
-              onClick={() => disconnect()}
-              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 px-6 py-2.5 text-sm font-medium text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-red-500/20 min-w-[140px]"
-            >
-              End Session
-            </button>
-          )}
-        </div>
+            Start Session
+          </button>
+        ) : (
+          <button
+            onClick={() => disconnect()}
+            className="rounded-xl bg-gradient-to-br from-red-500 to-red-600 px-6 py-2.5 text-sm font-medium text-white"
+          >
+            End Session
+          </button>
+        )}
       </div>
     </div>
   );

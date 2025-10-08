@@ -87,6 +87,17 @@ export default function Navbar() {
                         >
                             Speech-to-Speech
                         </Link>
+
+                        <Link
+                            href="/voice-design"
+                           
+                            className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 ${pathname === '/voice-design'
+                                ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                                : 'text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                                }`}
+                        >
+                            Voice Design
+                        </Link>
                         
                         {/* Expressions Dropdown */}
                         <div className="relative" ref={dropdownRef}>
@@ -133,7 +144,7 @@ export default function Navbar() {
 
                         <button
                             onClick={toggleTheme}
-                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 cursor-pointer"
                             aria-label={`Cambiar a modo ${theme === 'light' ? 'oscuro' : 'claro'}`}
                         >
                             {theme === 'light' ? (

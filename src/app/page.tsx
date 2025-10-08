@@ -1,6 +1,6 @@
 // app/page.tsx
 import Link from "next/link";
-import { Mic, Speech, ScanFace } from "lucide-react";
+import { Mic, Speech, ScanFace, MicVocal } from "lucide-react";
 
 export default function Page() {
   return (
@@ -25,7 +25,7 @@ export default function Page() {
         </header>
 
         {/* Feature Cards */}
-        <section className="grid gap-8 md:grid-cols-3 mb-20">
+        <section className="grid gap-8 md:grid-cols-2 mb-20">
           <Link
             href="/tts"
             className="group relative overflow-hidden rounded-3xl border border-gray-300 dark:bg-gradient-to-br from-gray-100/80 to-gray-200/40 dark:border-gray-800 dark:from-gray-900/80 dark:to-gray-800/40 p-8 hover:border-emerald-500/50 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-emerald-500/20 dark:hover:shadow-emerald-500/10"
@@ -85,7 +85,7 @@ export default function Page() {
           </Link>
 
           <Link
-            href="/expressions"
+            href="/expressions/voice"
             className="group relative overflow-hidden rounded-3xl border border-gray-300 dark:bg-gradient-to-br from-gray-100/80 to-gray-200/40 dark:border-gray-800 dark:from-gray-900/80 dark:to-gray-800/40 p-8 hover:border-purple-500/50 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/20 dark:hover:shadow-purple-500/10"
           >
             {/* Background Effect */}
@@ -109,6 +109,35 @@ export default function Page() {
               </span>
               <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/voice-design"
+            className="group relative overflow-hidden rounded-3xl border border-gray-300 dark:bg-gradient-to-br from-gray-100/80 to-gray-200/40 dark:border-gray-800 dark:from-gray-900/80 dark:to-gray-800/40 p-8 hover:border-yellow-500/50 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-yellow-500/20 dark:hover:shadow-yellow-500/10"
+          >
+            {/* Background Effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+            {/* Icon */}
+            <div className="relative mb-6">
+              <div className="w-14 h-14 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <MicVocal className="w-6 h-6 text-white" />
+              </div>
+            </div>
+
+            <h2 className="text-2xl font-semibold mb-3">Voice Design</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed transition-colors duration-300">
+              Crea tus propias voces personalizadas con matices emocionales únicos.
+            </p>
+
+            <div className="flex items-center justify-between">
+              <span className="text-yellow-400 text-sm font-medium group-hover:translate-x-2 transition-transform duration-300">
+                Diseñar voz personalizada →
+              </span>
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
               </div>
             </div>
           </Link>
