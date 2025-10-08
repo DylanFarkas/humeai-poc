@@ -13,6 +13,21 @@ interface UserState {
   timestamp: number;
 }
 
+interface VoiceModel {
+  scores?: EmotionScores;
+}
+
+interface VoiceMessage {
+  type: string;
+  models?: {
+    prosody?: VoiceModel;
+    face?: VoiceModel;
+    burst?: VoiceModel;
+    [key: string]: VoiceModel | undefined;
+  };
+  scores?: EmotionScores;
+}
+
 export default function EmotionMeter({ variant = 'default' }: { variant?: 'default' | 'prominent' }) {
   const { messages, readyState } = useVoice();
   const [userState, setUserState] = useState<UserState>({
@@ -34,10 +49,11 @@ export default function EmotionMeter({ variant = 'default' }: { variant?: 'defau
   useEffect(() => {
     if (readyState === VoiceReadyState.CLOSED) return;
 
-    const userMessages = messages.filter((msg: any) => 
-      msg.type.toLowerCase().includes("user") || 
-      msg.type.toLowerCase().includes("user_message")
-    );
+    const userMessages = messages.filter((msg: unknown) => {
+      const message = msg as VoiceMessage;
+      return message.type.toLowerCase().includes("user") || 
+             message.type.toLowerCase().includes("user_message");
+    });
 
     if (userMessages.length > 0) {
       const latestUserMessage = userMessages[userMessages.length - 1];
@@ -53,29 +69,31 @@ export default function EmotionMeter({ variant = 'default' }: { variant?: 'defau
     }
   }, [messages, readyState]);
 
-  const extractEmotions = (message: any): EmotionScores => {
+  const extractEmotions = (message: unknown): EmotionScores => {
+    const msg = message as VoiceMessage;
     const emotions: EmotionScores = {};
     
-    if (message.models?.prosody?.scores) {
-      return message.models.prosody.scores;
+    if (msg.models?.prosody?.scores) {
+      return msg.models.prosody.scores;
     }
     
-    if (message.models?.face?.scores) {
-      return message.models.face.scores;
+    if (msg.models?.face?.scores) {
+      return msg.models.face.scores;
     }
     
-    if (message.models?.burst?.scores) {
-      return message.models.burst.scores;
+    if (msg.models?.burst?.scores) {
+      return msg.models.burst.scores;
     }
     
-    if (message.scores) {
-      return message.scores;
+    if (msg.scores) {
+      return msg.scores;
     }
     
-    if (message.models) {
-      Object.values(message.models).forEach((model: any) => {
-        if (model.scores) {
-          Object.assign(emotions, model.scores);
+    if (msg.models) {
+      Object.values(msg.models).forEach((model: unknown) => {
+        const voiceModel = model as VoiceModel;
+        if (voiceModel?.scores) {
+          Object.assign(emotions, voiceModel.scores);
         }
       });
     }
@@ -211,7 +229,7 @@ export default function EmotionMeter({ variant = 'default' }: { variant?: 'defau
                 Emotional State
               </div>
               <div className="flex flex-wrap gap-1">
-                {topEmotions.slice(0, 3).map(([emotion, score]) => (
+                {topEmotions.slice(0, 3).map(([emotion]) => (
                   <div
                     key={emotion}
                     className={`px-2 py-1 rounded-full text-xs ${getEmotionColor(emotion)} text-white font-medium transition-all duration-300`}

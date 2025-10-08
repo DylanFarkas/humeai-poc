@@ -7,7 +7,7 @@ export interface VoiceGeneration {
   duration: number;
   file_size: number;
   audio: string;
-  snippets?: any[];
+  snippets?: Record<string, unknown>[];
 }
 
 export interface EviConfig {

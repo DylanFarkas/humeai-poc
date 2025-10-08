@@ -70,8 +70,8 @@ export default function TTSClient() {
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       await audio.play();
-    } catch (err: any) {
-      setError(err.message || "No se pudo generar el audio");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "No se pudo generar el audio");
     } finally {
       setIsLoading(false);
     }

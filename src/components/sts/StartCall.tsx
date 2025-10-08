@@ -50,7 +50,7 @@ export default function StartCall({ accessToken }: { accessToken: string }) {
         setLoadingConfigs(true);
         const cfgs = await client.listEviConfigs();
         setConfigs(cfgs);
-      } catch (e) {
+      } catch (e: unknown) {
         console.error("No se pudieron cargar las configs:", e);
       } finally {
         setLoadingConfigs(false);
@@ -157,7 +157,7 @@ export default function StartCall({ accessToken }: { accessToken: string }) {
                 alert("No se pudo iniciar la sesión de voz.");
               }
             }}
-            className="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 px-6 py-2.5 text-sm font-medium text-white"
+            className="cursor-pointer rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 px-6 py-2.5 text-sm font-medium text-white"
           >
             Start Session
           </button>

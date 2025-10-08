@@ -9,7 +9,6 @@ import {
   Sparkles,
   Volume2,
   Trash2,
-  Plus,
   Loader2
 } from 'lucide-react';
 
