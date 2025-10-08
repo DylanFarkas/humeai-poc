@@ -44,11 +44,11 @@ export async function POST(req: NextRequest) {
         "Content-Length": audioBuffer.length.toString(),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error en TTS:", error);
     return new Response(
       JSON.stringify({
-        error: error.message || "Error al generar audio",
+        error: error instanceof Error ? error.message : "Error al generar audio",
       }),
       {
         status: 500,

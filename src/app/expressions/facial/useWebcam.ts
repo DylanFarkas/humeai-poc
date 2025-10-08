@@ -1,7 +1,7 @@
 'use client';
 
 // src/app/expressions/useWebcam.ts
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 
 export interface MediaDeviceInfo {
   deviceId: string;
@@ -18,7 +18,7 @@ export function useWebcam() {
   const streamRef = useRef<MediaStream | null>(null);
 
   // Detectar todas las cámaras disponibles
-  const getVideoDevices = async () => {
+  const getVideoDevices = useCallback(async () => {
     try {
       // Primero solicitar permisos
       await navigator.mediaDevices.getUserMedia({ video: true });
@@ -41,7 +41,7 @@ export function useWebcam() {
       console.error('Error getting video devices:', err);
       setError('No se pudo acceder a las cámaras. Por favor, verifica los permisos.');
     }
-  };
+  }, [selectedDeviceId]);
 
   const startWebcam = async (deviceId?: string) => {
     try {
@@ -121,7 +121,7 @@ export function useWebcam() {
       stopWebcam();
       navigator.mediaDevices.removeEventListener('devicechange', getVideoDevices);
     };
-  }, []);
+  }, [getVideoDevices]);
 
   return {
     videoRef,

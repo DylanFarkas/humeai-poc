@@ -3,11 +3,43 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useVoice, VoiceReadyState } from "@humeai/voice-react";
 
+interface MessageInput {
+  message?: string | { 
+    content?: string; 
+    text?: string; 
+    models?: {
+      [key: string]: {
+        scores?: Record<string, unknown>;
+        predictions?: Array<{ emotions?: Record<string, unknown> }>;
+        [key: string]: unknown;
+      };
+    };
+    scores?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+  content?: string;
+  text?: string;
+  type?: string;
+  models?: {
+    [key: string]: {
+      scores?: Record<string, unknown>;
+      predictions?: Array<{ emotions?: Record<string, unknown> }>;
+      [key: string]: unknown;
+    };
+  };
+  scores?: Record<string, unknown>;
+  prosody?: {
+    predictions?: Array<{ emotions?: Record<string, unknown> }>;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
 type NormalizedMsg = {
   role: "assistant" | "user" | "system" | "other";
   text: string;
   type: string;
-  originalMessage?: any;
+  originalMessage?: MessageInput;
 };
 
 export default function Messages() {
@@ -59,7 +91,7 @@ export default function Messages() {
   }, [messages]);
 
   // --- Helpers de texto/rol ---
-  const getText = (m: any): string => {
+  const getText = (m: MessageInput): string => {
     if (typeof m?.message === "string") return m.message;
     if (typeof m?.content === "string") return m.content;
     if (typeof m?.text === "string") return m.text;
@@ -86,7 +118,7 @@ export default function Messages() {
   };
 
   // --- Normalización de emociones ---
-  function normalizeToMap(input: any): Record<string, number> {
+  function normalizeToMap(input: unknown): Record<string, number> {
     if (!input) return {};
     if (Array.isArray(input)) {
       const out: Record<string, number> = {};
@@ -108,13 +140,15 @@ export default function Messages() {
     return {};
   }
 
-  function extractEmotions(message: any): Record<string, number> {
+  function extractEmotions(message: MessageInput): Record<string, number> {
+    const messageObj = typeof message.message === 'object' ? message.message : null;
+    
     const candidates = [
       // Prosodia en vivo (rutas comunes)
       message?.models?.prosody?.scores,
-      message?.message?.models?.prosody?.scores,
+      messageObj?.models?.prosody?.scores,
       message?.models?.prosody?.predictions?.[0]?.emotions,
-      message?.message?.models?.prosody?.predictions?.[0]?.emotions,
+      messageObj?.models?.prosody?.predictions?.[0]?.emotions,
       message?.prosody?.predictions?.[0]?.emotions,
 
       // Otros modelos
@@ -123,7 +157,7 @@ export default function Messages() {
 
       // Plano
       message?.scores,
-      message?.message?.scores,
+      messageObj?.scores,
     ];
 
     for (const c of candidates) {
@@ -134,8 +168,8 @@ export default function Messages() {
     // Barrido por modelos si vinieron raros
     if (message?.models && typeof message.models === "object") {
       let agg: Record<string, number> = {};
-      for (const model of Object.values(message.models as any)) {
-        const mapped = normalizeToMap((model as any)?.scores);
+      for (const model of Object.values(message.models)) {
+        const mapped = normalizeToMap(model?.scores);
         if (Object.keys(mapped).length) agg = { ...agg, ...mapped };
       }
       if (Object.keys(agg).length) return agg;
@@ -144,7 +178,7 @@ export default function Messages() {
     return {};
   }
 
-  const getEmotionBadges = (message: any) => {
+  const getEmotionBadges = (message: MessageInput) => {
     const emotions = extractEmotions(message);
     const topEmotions = Object.entries(emotions)
       .sort(([, a], [, b]) => (b as number) - (a as number))
@@ -185,11 +219,12 @@ export default function Messages() {
     const current = messages.slice(start);
 
     return current
-      .map((m: any): NormalizedMsg => {
-        const rawType = String(m?.type ?? "unknown");
-        const text = getText(m);
+      .map((m: unknown): NormalizedMsg => {
+        const message = m as MessageInput;
+        const rawType = String(message?.type ?? "unknown");
+        const text = getText(message);
         const role = getRole(rawType);
-        return { role, text, type: rawType, originalMessage: m };
+        return { role, text, type: rawType, originalMessage: message };
       })
       .filter((m) => m.text.trim().length > 0);
   }, [messages]);
@@ -225,7 +260,7 @@ export default function Messages() {
                 }`}
             >
               {m.text}
-              {m.role === "user" && getEmotionBadges(m.originalMessage)}
+              {m.role === "user" && m.originalMessage && getEmotionBadges(m.originalMessage)}
             </div>
           </div>
         ))}
