@@ -16,7 +16,7 @@ export default function StatusBar() {
         );
       case VoiceReadyState.CONNECTING:
         return (
-          <span className="rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 text-xs font-medium transition-colors duration-300">
+          <span className="rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-3 py-1 text-xs font-medium transition-colors duration-300">
             Conectando…
           </span>
         );
